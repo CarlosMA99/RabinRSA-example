@@ -4,7 +4,7 @@ from utils.expo_rapida import expo_rapida as pow_ef
 #Firma a un usuario con clave pública (nB , eB) y privada (pB, qB, dB)
 #El mensaje M ∈ Z/<N^k>
 
-def firma_digital_sin_privacidad():
+def firma_digital_sin_privacidad(): #Implementar los usuarios con la clase RSA
     C = pow_ef(M,dA,nA)
     #Enviar C
     if (pow_ef(C,eA,nA) == M):
