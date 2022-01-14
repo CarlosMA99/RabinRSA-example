@@ -7,7 +7,8 @@ from utils.expo_rapida import expo_rapida as pow_ef
 def firma_digital_sin_privacidad():
     C = pow_ef(M,dA,nA)
     #Enviar C
-    if (pow_ef(C,eA,nA) == M)
+    if (pow_ef(C,eA,nA) == M):
+        #El mensaje se verifica
     
 def firma_digital_con_privacidad():
     C = pow_ef(M,dA,nA)
