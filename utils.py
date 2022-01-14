@@ -13,10 +13,10 @@ def expo_rapida(b,e,n=0): # Función que calcula b^e mod n de manera eficiente. 
             res = (res*b)
             if n > 0:
                 res %= n
-        b = (b*b)
+        b = b*b
         if n > 0:
             b %= n
-        e //= 2
+        e = e // 2
     return res
 
 
@@ -51,9 +51,9 @@ def euclides_extendido(a,b): # Función que calcula b^e mod n de manera eficient
         a,b,rem = b,rem,b%rem
     
     k = len(seq1)
-    (p,q) = (seq1[k-1]*(-1)**k,seq2[k-1]*(-1)**(k+1))
+    (p,q) = (seq1[k-1]*(-1)**(k-1),seq2[k-1]*(-1)**k)
 
-    if p*aux_a+q*aux_b < 0:
+    if aux_a*p+aux_b*q < 0:
         p, q = -p, -q
     
     return (p,q,b)
@@ -75,7 +75,6 @@ def miller_rabin(n):
 
     a = random.randint(2,n-2)
     (pot,num) = descomponer_en_impar(n-1)
-
     res = expo_rapida(a,num,n)
     if res == 1 or res == n-1:
         return True

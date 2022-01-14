@@ -1,11 +1,13 @@
 import random
+from re import L
 import utils as ut
 
 LDB = 300
 UDB = 500
-CARD = 257
+CARD = 256
 
-def create_prime(digs):
+def create_prime():
+    digs = random.randint(LDB,UDB)
     impares = [1,3,7,9]
     pot = 10
     num = random.choice(impares)
@@ -23,7 +25,7 @@ def create_prime(digs):
             pot *= 10
         num += (random.randint(1,9))*pot
     
-    return num
+    return (num,digs)
 
 
 
@@ -32,20 +34,19 @@ def create_prime(digs):
 
 
 class RSA:
-    def __init__(self,id):
-        self.id = id
-        digs1 = random.randint(LDB,UDB)
-        self.p1 = create_prime(digs1)
-        digs2 = random.randint(LDB,UDB)
-        self.p2 = create_prime(digs2)
-        if self.p1 < self.p2:
-            self.p1 , self.p2 = self.p2, self.p1
-        self.lim = ut.expo_rapida(10,digs1 + digs2 - 1)
+    def __init__(self):
+        pair1 = create_prime()
+        pair2 = create_prime()
+        if pair1[0] < pair2[0]:
+            pair1, pair2 = pair2, pair1
+        self.p1 = pair1[0]
+        self.p2 = pair2[0]
         self.n = self.p1*self.p2
+        self.lim = ut.expo_rapida(10,pair1[1] + pair2[1] - 1)
         self.tot = (self.p1-1)*(self.p2-1)
         self.e = random.randint(2,self.tot-1)
         bezout = ut.euclides_extendido(self.tot,self.e)
-        while bezout[2] > 1:
+        while bezout[2] > 1 and (self.e == self.p1 or self.e == self.p2):
             self.e = random.randint(2,self.tot-1)
             bezout = ut.euclides_extendido(self.tot,self.e)
         self.d = bezout[1]
@@ -59,9 +60,6 @@ class RSA:
     def get_lim(self):
         return self.lim
 
-    def get_id(self):
-        return self.id
-
     
     def humanToCipher(self,lim,s):
         cipher = list()
@@ -69,13 +67,12 @@ class RSA:
         while i < len(s):
             curr = 0
             pot = 1
-            while pot < lim and i < len(s):
+            while pot < lim//1000 and i < len(s):
                 ascii_ind = ord(s[i])+1
-                if ascii_ind >= 1000:
-                    print(ascii_ind)
                 curr += (ascii_ind*pot)
                 pot *= 1000
                 i += 1
+            curr += (ord('&')+1)*pot # & es un caracter de control para saber cuál es la cadena correcta cuando decodifiquemos
             cipher.append(curr)
         return cipher
         
@@ -83,9 +80,7 @@ class RSA:
         s = ""
         while cipher > 0:
             ch = cipher%1000
-            if ch > CARD:
-                return
-            s += chr(ch-1)
+            s += chr((ch-1)%CARD)
             cipher //= 1000
         return s
     
@@ -106,39 +101,26 @@ class RSA:
             r3 = (self.p1*sq_modq*x1-self.p2*sq_modp*y1)%self.n
             r4 = self.n - r3
             roots = [r1,r2,r3,r4]
-
             frag = list()
             for r in roots:
                 frag.append(self.cipherToHuman(r))
             texts.append(frag)
-        
+            
+        text = ""
         for i in range(len(texts[0])):
-            text = ""
-            j = 0
-            exit = False
-            while j < len(texts) and not exit:
-                if texts[j][i] is None:
-                    exit = True
-                else:
-                    text += texts[j][i]
-                    j += 1
-            if j == len(texts):
-                return text
+            for j in range(len(texts)):
+                if texts[j][i][-1] == "&":
+                    text += texts[j][i][:-1]
 
-        return
-
-    #Usuario con clave pública (nA, eA) y privada (pA, qA, dA)
-    #Firma a un usuario con clave pública (nB , eB) y privada (pB, qB, dB)
-    #El mensaje M ∈ Z/<N^k>
+        return text
         
-    def firmar_con_privacidad(self,dest):
-        menfirma = "Firmado"
+    def firmar_con_privacidad(self,dest,mes):
         (nD,eD) = dest.public_key()
         nE, eE, dE = self.n, self.e, self.d
         lim = min(self.lim,dest.get_lim())
-        #Enviar C
+        #Enviar la firma c
         c = list()
-        m = self.humanToCipher(lim,menfirma)
+        m = self.humanToCipher(lim,mes)
         if nE < nD:
             for elem in m:
                 c.append(ut.expo_rapida(ut.expo_rapida(elem,dE,nE), eD, nD))
@@ -148,7 +130,7 @@ class RSA:
         return c
 
     
-    def verificar_firma(self,em,m):
+    def verificar_firma(self,em,m,comp):
         (nE,eE) = em.public_key()
         nD, eD, dD = self.n, self.e, self.d
         men = list()
@@ -161,45 +143,20 @@ class RSA:
         menfirma = ""
         for elem in men:
             menfirma += self.cipherToHuman(elem)
-        print(menfirma)
-        if menfirma == "Firmado":
-            print("Firma válida\n")
+        if menfirma.__eq__(comp):
+            print("Firma válida")
             return True
-        print("Firma no válida\n")
+        print("Firma no válida")
         return False
         
 
     def send_message(self,dest,men):
-        return [self.encrypt(dest,men),self.firmar_con_privacidad(dest)] 
+        return [self.encrypt(dest,men),self.firmar_con_privacidad(dest,men)] 
 
 
     def rec_message(self,sen,cif):
         decr = self.decrypt(cif[0])
-        self.verificar_firma(sen,cif[1])
-        return decr
-
-
-Alice = RSA("Alice")
-Bob = RSA("Bob")
-m1 = "Hola que tal"
-m2 = "Muy bien"
-m3 = "Códigos: ñóáéíóúa123421328910asfjkkljrijnij ijasirjijweqfdjasoirjqf184u312398jf"
-m4 = "Ya han sido insertados"
-
-en1 = Alice.send_message(Bob,m1)
-dec1 = Bob.rec_message(Alice,en1)
-
-en2 = Bob.send_message(Alice,m2)
-dec2 = Alice.rec_message(Bob,en2)
-
-en3 = Alice.send_message(Bob,m3)
-dec3 = Bob.rec_message(Alice,en3)
-
-en4 = Bob.send_message(Alice,m4)
-dec4 = Alice.rec_message(Bob,en4)
-
-
-
+        self.verificar_firma(sen,cif[1],decr)
 
 
 
