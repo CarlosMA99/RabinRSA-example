@@ -42,20 +42,9 @@ def rho_pollard(n): # Esta función aplica el algoritmo de rho pollard al núme
 
 
 def ataque_rsa(): # Esta función es un ataque mediante el método de rho-pollard
-    prueba = rsa.RSA("trial")
+    prueba = rsa.RSA()
     (n,e) = prueba.public_key()
     fact = rho_pollard(n)
     if fact is None:
         print("Ataque fallido. Clave fuerte")
     else: print("Ataque exitoso. Clave débil. Factor: {0}".format(fact))
-
-ataque_rsa()
-
-
-
-    
-
-
-
-
-

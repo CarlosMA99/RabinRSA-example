@@ -1,5 +1,4 @@
 import random
-from re import L
 import utils as ut
 
 LDB = 300
@@ -24,7 +23,6 @@ def create_prime():
             num += (random.randint(0,9))*pot
             pot *= 10
         num += (random.randint(1,9))*pot
-    
     return (num,digs)
 
 
@@ -118,7 +116,7 @@ class RSA:
         (nD,eD) = dest.public_key()
         nE, eE, dE = self.n, self.e, self.d
         lim = min(self.lim,dest.get_lim())
-        #Enviar la firma c
+        #Enviar la firma
         c = list()
         m = self.humanToCipher(lim,mes)
         if nE < nD:
