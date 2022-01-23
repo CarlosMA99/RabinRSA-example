@@ -129,6 +129,17 @@ class RSA:
                 c.append(ut.expo_rapida(ut.expo_rapida(elem,eD,nD), dE, nE))
         return c
 
+    def firmar_sin_privacidad(self,dest,mes):
+        (nD,eD) = dest.public_key()
+        nE, eE, dE = self.n, self.e, self.d
+        lim = min(self.lim,dest.get_lim())
+        #Enviar la firma c
+        c = list()
+        m = self.humanToCipher(lim,mes)
+        for elem in m:
+            c.append(ut.expo_rapida(elem, dE, nE))
+        return c
+
     
     def verificar_firma(self,em,m,comp):
         (nE,eE) = em.public_key()
@@ -148,6 +159,22 @@ class RSA:
             return True
         print("Firma no válida")
         return False
+
+
+    def verificar_firma_sin_privacidad(self,em,m,comp):
+        (nE,eE) = em.public_key()
+        nD, eD, dD = self.n, self.e, self.d
+        men = list()
+        for elem in m:
+            men.append(ut.expo_rapida(ut.expo_rapida(elem,dD,nD), eE, nE))
+        menfirma = ""
+        for elem in men:
+            menfirma += self.cipherToHuman(elem)
+        if menfirma.__eq__(comp):
+            print("Firma válida")
+            return True
+        print("Firma no válida")
+        return False
         
 
     def send_message(self,dest,men):
@@ -157,14 +184,3 @@ class RSA:
     def rec_message(self,sen,cif):
         decr = self.decrypt(cif[0])
         self.verificar_firma(sen,cif[1],decr)
-
-
-
-
-            
-
-
-
-
-
-
