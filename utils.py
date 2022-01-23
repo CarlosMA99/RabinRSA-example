@@ -30,7 +30,7 @@ def euclides_gcd(a,b):
         a,b,rem = b,rem,b%rem
     return b
 
-def euclides_extendido(a,b): # Función que calcula b^e mod n de manera eficiente. Si n=0 (por defecto) calcula b^e
+def euclides_extendido(a,b): # Dados dos enteros a y b, esta función devuelve su máximo común divisior d y enteros p y q que cumplen a*p+b*q = d
     if a < b:
         a, b = b, a
     if a == 0 or b == 0:

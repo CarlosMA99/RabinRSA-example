@@ -32,7 +32,8 @@ def create_prime():
 
 
 class RSA:
-    def __init__(self):
+    def __init__(self,id):
+        self.id = id
         pair1 = create_prime()
         pair2 = create_prime()
         if pair1[0] < pair2[0]:
@@ -41,16 +42,18 @@ class RSA:
         self.p2 = pair2[0]
         self.n = self.p1*self.p2
         self.lim = ut.expo_rapida(10,pair1[1] + pair2[1] - 1)
-        self.tot = (self.p1-1)*(self.p2-1)
+        self.tot = ((self.p1-1)*(self.p2-1))//(ut.euclides_gcd(self.p1-1,self.p2-1))
         self.e = random.randint(2,self.tot-1)
         bezout = ut.euclides_extendido(self.tot,self.e)
-        while bezout[2] > 1 and (self.e == self.p1 or self.e == self.p2):
+        while bezout[2] > 1 or self.e == self.p1 or self.e == self.p2:
             self.e = random.randint(2,self.tot-1)
             bezout = ut.euclides_extendido(self.tot,self.e)
-        self.d = bezout[1]
+        self.d = bezout[1]%self.tot
         self.publica = (self.n,self.e)
         self.privada = (self.d,self.p1,self.p2)
 
+    def get_id(self):
+        return self.id
 
     def public_key(self):
         return self.publica
@@ -111,74 +114,85 @@ class RSA:
                     text += texts[j][i][:-1]
 
         return text
+
+    def firmar_sin_privacidad(self,dest,mes):
+        nE, eE, dE = self.n, self.e, self.d
+        lim = dest.get_lim()
+        c = list()
+        for elem in mes:
+            c.append(ut.expo_rapida(elem, dE, nE))
+        return c
         
     def firmar_con_privacidad(self,dest,mes):
         (nD,eD) = dest.public_key()
         nE, eE, dE = self.n, self.e, self.d
-        lim = min(self.lim,dest.get_lim())
-        #Enviar la firma
         c = list()
-        m = self.humanToCipher(lim,mes)
         if nE < nD:
-            for elem in m:
+           for elem in mes:
                 c.append(ut.expo_rapida(ut.expo_rapida(elem,dE,nE), eD, nD))
         else:
-            for elem in m:
+            for elem in mes:
                 c.append(ut.expo_rapida(ut.expo_rapida(elem,eD,nD), dE, nE))
         return c
 
-    def firmar_sin_privacidad(self,dest,mes):
-        (nD,eD) = dest.public_key()
-        nE, eE, dE = self.n, self.e, self.d
-        lim = min(self.lim,dest.get_lim())
-        #Enviar la firma c
-        c = list()
-        m = self.humanToCipher(lim,mes)
+    def verificar_firma_sin_privacidad(self,em,m,comp):
+        nE, eE = em.public_key()
+        sign = list()
         for elem in m:
-            c.append(ut.expo_rapida(elem, dE, nE))
-        return c
-
-    
-    def verificar_firma(self,em,m,comp):
-        (nE,eE) = em.public_key()
-        nD, eD, dD = self.n, self.e, self.d
-        men = list()
-        if nE < nD:
-            for elem in m:
-                men.append(ut.expo_rapida(ut.expo_rapida(elem,dD,nD), eE, nE))
-        else:
-            for elem in m:
-                men.append(ut.expo_rapida(ut.expo_rapida(elem,eE,nE), dD, nD))
-        menfirma = ""
-        for elem in men:
-            menfirma += self.cipherToHuman(elem)
-        if menfirma.__eq__(comp):
-            print("Firma válida")
+            sign.append(ut.expo_rapida(elem,eE,nE))
+        if sign == comp:
             return True
-        print("Firma no válida")
         return False
 
 
-    def verificar_firma_sin_privacidad(self,em,m,comp):
+
+
+    
+    def verificar_firma_con_privacidad(self,em,m,comp):
         (nE,eE) = em.public_key()
         nD, eD, dD = self.n, self.e, self.d
-        men = list()
-        for elem in m:
-            men.append(ut.expo_rapida(ut.expo_rapida(elem,dD,nD), eE, nE))
-        menfirma = ""
-        for elem in men:
-            menfirma += self.cipherToHuman(elem)
-        if menfirma.__eq__(comp):
-            print("Firma válida")
+        sign = list()
+        if nE < nD:
+            for elem in m:
+                sign.append(ut.expo_rapida(ut.expo_rapida(elem,dD,nD), eE, nE))
+        else:
+            for elem in m:
+                sign.append(ut.expo_rapida(ut.expo_rapida(elem,eE,nE), dD, nD))
+        if sign == comp:
             return True
-        print("Firma no válida")
         return False
         
 
-    def send_message(self,dest,men):
-        return [self.encrypt(dest,men),self.firmar_con_privacidad(dest,men)] 
+    def send_message(self,dest,men,priv=True):
+        if priv:
+            encript_men = self.encrypt(dest,men)
+            sign = self.firmar_con_privacidad(dest,encript_men)
+            print("Mensaje {0} a {1} de parte de {2} enviado con éxito. La firma se hará con privacidad".format(men,dest.get_id(),self.id))
+        else:
+            encript_men = self.encrypt(dest,men)
+            sign = self.firmar_sin_privacidad(dest,encript_men)
+            print("Mensaje {0} a {1} de parte de {2} enviado con éxito. La firma se hará sin privacidad".format(men,dest.get_id(),self.id))
+        return [encript_men,sign]
 
 
-    def rec_message(self,sen,cif):
-        decr = self.decrypt(cif[0])
-        self.verificar_firma(sen,cif[1],decr)
+    def rec_message(self,sen,cif,priv=True):
+        if priv:
+            ok = self.verificar_firma_con_privacidad(sen,cif[1],cif[0])
+            if ok:
+                decr = self.decrypt(cif[0])
+                print("Mensaje {0} a {1} de parte de {2} recibido y firma validada con éxito".format(decr,self.id,sen.get_id()))
+            else: print("Recepción fallida. Firma no válida.")
+        else:
+            ok = self.verificar_firma_sin_privacidad(sen,cif[1],cif[0])
+            if ok:
+                decr = self.decrypt(cif[0])
+                print("Mensaje {0} a {1} de parte de {2} recibido y firma validada con éxito".format(decr,self.id,sen.get_id()))
+            else: print("Recepción fallida. Firma no válida.")
+
+    def intercambiar_mensaje(self,dest,men,priv=True):
+        encr = self.send_message(dest,men,priv)
+        dest.rec_message(self,encr,priv)
+
+
+
+
