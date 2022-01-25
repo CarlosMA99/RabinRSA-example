@@ -23,7 +23,17 @@ def create_prime():
             num += (random.randint(0,9))*pot
             pot *= 10
         num += (random.randint(1,9))*pot
-    return (num,digs)
+    return num
+
+
+def findkgram(em,rec):
+    (n,e) = em.public_key()
+    (n1,e1) = rec.public_key()
+    inf = min(n,n1)
+    i = 1
+    while i*1000 < inf:
+        i *= 1000
+    return i
 
 
 
@@ -36,12 +46,11 @@ class RSA:
         self.id = id
         pair1 = create_prime()
         pair2 = create_prime()
-        if pair1[0] < pair2[0]:
+        if pair1 < pair2:
             pair1, pair2 = pair2, pair1
-        self.p1 = pair1[0]
-        self.p2 = pair2[0]
+        self.p1 = pair1
+        self.p2 = pair2
         self.n = self.p1*self.p2
-        self.lim = ut.expo_rapida(10,pair1[1] + pair2[1] - 1)
         self.tot = ((self.p1-1)*(self.p2-1))//(ut.euclides_gcd(self.p1-1,self.p2-1))
         self.e = random.randint(2,self.tot-1)
         bezout = ut.euclides_extendido(self.tot,self.e)
@@ -49,6 +58,8 @@ class RSA:
             self.e = random.randint(2,self.tot-1)
             bezout = ut.euclides_extendido(self.tot,self.e)
         self.d = bezout[1]%self.tot
+        if (self.d*self.e)%self.tot > 1:
+            print("Oh oh")
         self.publica = (self.n,self.e)
         self.privada = (self.d,self.p1,self.p2)
 
@@ -57,9 +68,6 @@ class RSA:
 
     def public_key(self):
         return self.publica
-    
-    def get_lim(self):
-        return self.lim
 
     
     def humanToCipher(self,lim,s):
@@ -85,10 +93,9 @@ class RSA:
             cipher //= 1000
         return s
     
-    def encrypt(self,dest,mes):
+    def encrypt(self,dest,mes,kgram):
         (n,e) = dest.public_key()
-        lim = dest.get_lim()
-        cipher = self.humanToCipher(lim,mes)
+        cipher = self.humanToCipher(kgram,mes)
         return [(ut.expo_rapida(x,2,n)) for x in cipher]
     
     def decrypt(self,cipher):
@@ -108,49 +115,49 @@ class RSA:
             texts.append(frag)
             
         text = ""
-        for i in range(len(texts[0])):
-            for j in range(len(texts)):
-                if texts[j][i][-1] == "&":
-                    text += texts[j][i][:-1]
-
+        for i in range(len(texts)):
+            for j in range(len(texts[0])):
+                if texts[i][j][-1] == "&":
+                    text += texts[i][j][:-1]
         return text
 
-    def firmar_sin_privacidad(self,dest,mes):
-        nE, eE, dE = self.n, self.e, self.d
-        lim = dest.get_lim()
+    def firmar_sin_privacidad(self,kgram):
+        nE, dE = self.n, self.d
+        mes = self.humanToCipher(kgram,self.id)
         c = list()
         for elem in mes:
             c.append(ut.expo_rapida(elem, dE, nE))
         return c
         
-    def firmar_con_privacidad(self,dest,mes):
+    def firmar_con_privacidad(self,dest,kgram):
         (nD,eD) = dest.public_key()
         nE, eE, dE = self.n, self.e, self.d
+        mes = self.humanToCipher(kgram,self.id)
         c = list()
         if nE < nD:
-           for elem in mes:
+            for elem in mes:
                 c.append(ut.expo_rapida(ut.expo_rapida(elem,dE,nE), eD, nD))
         else:
             for elem in mes:
                 c.append(ut.expo_rapida(ut.expo_rapida(elem,eD,nD), dE, nE))
         return c
 
-    def verificar_firma_sin_privacidad(self,em,m,comp):
-        nE, eE = em.public_key()
+    def verificar_firma_sin_privacidad(self,em,m,kgram):
+        (nE, eE) = em.public_key()
+        comp = self.humanToCipher(kgram,em.get_id())
         sign = list()
         for elem in m:
             sign.append(ut.expo_rapida(elem,eE,nE))
         if sign == comp:
             return True
+        
         return False
 
-
-
-
     
-    def verificar_firma_con_privacidad(self,em,m,comp):
+    def verificar_firma_con_privacidad(self,em,m,kgram):
         (nE,eE) = em.public_key()
         nD, eD, dD = self.n, self.e, self.d
+        comp = self.humanToCipher(kgram,em.get_id())
         sign = list()
         if nE < nD:
             for elem in m:
@@ -163,35 +170,35 @@ class RSA:
         return False
         
 
-    def send_message(self,dest,men,priv=True):
+    def send_message(self,dest,men,kgram,priv=True):
+        encript_men = self.encrypt(dest,men,kgram)
         if priv:
-            encript_men = self.encrypt(dest,men)
-            sign = self.firmar_con_privacidad(dest,encript_men)
+            sign = self.firmar_con_privacidad(dest,kgram)
             print("Mensaje {0} a {1} de parte de {2} enviado con éxito. La firma se hará con privacidad".format(men,dest.get_id(),self.id))
         else:
-            encript_men = self.encrypt(dest,men)
-            sign = self.firmar_sin_privacidad(dest,encript_men)
+            sign = self.firmar_sin_privacidad(kgram)
             print("Mensaje {0} a {1} de parte de {2} enviado con éxito. La firma se hará sin privacidad".format(men,dest.get_id(),self.id))
         return [encript_men,sign]
 
 
-    def rec_message(self,sen,cif,priv=True):
+    def rec_message(self,sen,cif,kgram,priv=True):
+        decr = self.decrypt(cif[0])
         if priv:
-            ok = self.verificar_firma_con_privacidad(sen,cif[1],cif[0])
+            ok = self.verificar_firma_con_privacidad(sen,cif[1],kgram)
             if ok:
-                decr = self.decrypt(cif[0])
                 print("Mensaje {0} a {1} de parte de {2} recibido y firma validada con éxito".format(decr,self.id,sen.get_id()))
-            else: print("Recepción fallida. Firma no válida.")
+            else: 
+                print("Recepción fallida. Firma no válida.")
         else:
-            ok = self.verificar_firma_sin_privacidad(sen,cif[1],cif[0])
+            ok = self.verificar_firma_sin_privacidad(sen,cif[1],kgram)
             if ok:
-                decr = self.decrypt(cif[0])
                 print("Mensaje {0} a {1} de parte de {2} recibido y firma validada con éxito".format(decr,self.id,sen.get_id()))
             else: print("Recepción fallida. Firma no válida.")
 
     def intercambiar_mensaje(self,dest,men,priv=True):
-        encr = self.send_message(dest,men,priv)
-        dest.rec_message(self,encr,priv)
+        kgram = findkgram(self,dest)
+        encr = self.send_message(dest,men,kgram,priv)
+        dest.rec_message(self,encr,kgram,priv)
 
 
 

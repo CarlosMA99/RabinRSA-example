@@ -32,9 +32,6 @@ def rho_pollard(n): # Esta función aplica el algoritmo de rho pollard al núme
         x = (pow_ef(x,2,n) + c)%n
         y = (pow_ef((pow_ef(y,2,n) + c)%n,2,n) + c)%n
         gcd = mcd(abs(x-y),n)
-        print(x)
-        print(y)
-        print(gcd)
 
     if gcd == 1 or gcd == n:
         return
