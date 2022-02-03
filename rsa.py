@@ -58,8 +58,6 @@ class RSA:
             self.e = random.randint(2,self.tot-1)
             bezout = ut.euclides_extendido(self.tot,self.e)
         self.d = bezout[1]%self.tot
-        if (self.d*self.e)%self.tot > 1:
-            print("Oh oh")
         self.publica = (self.n,self.e)
         self.privada = (self.d,self.p1,self.p2)
 
@@ -199,7 +197,5 @@ class RSA:
         kgram = findkgram(self,dest)
         encr = self.send_message(dest,men,kgram,priv)
         dest.rec_message(self,encr,kgram,priv)
-
-
 
 

@@ -1,8 +1,11 @@
 import random
 
 
+CHOSEN = set()
 
-def expo_rapida(b,e,n=0): # Función que calcula b^e mod n de manera eficiente. Si n=0 (por defecto) calcula b^e
+
+
+def expo_rapida(b,e,n=0):
     if e == 0:
         return 1
     if n > 0:    
@@ -30,7 +33,7 @@ def euclides_gcd(a,b):
         a,b,rem = b,rem,b%rem
     return b
 
-def euclides_extendido(a,b): # Dados dos enteros a y b, esta función devuelve su máximo común divisior d y enteros p y q que cumplen a*p+b*q = d
+def euclides_extendido(a,b):
     if a < b:
         a, b = b, a
     if a == 0 or b == 0:
@@ -74,6 +77,9 @@ def miller_rabin(n):
         return False
 
     a = random.randint(2,n-2)
+    while a in CHOSEN:
+        a = random.randint(2,n-2)
+    CHOSEN.add(a)
     (pot,num) = descomponer_en_impar(n-1)
     res = expo_rapida(a,num,n)
     if res == 1 or res == n-1:
@@ -89,6 +95,7 @@ def miller_rabin(n):
 
 
 def es_primo_miller_rabin(n,k=10):
+    CHOSEN.clear()
     for i in range(k):
         if not miller_rabin(n):
             return False
